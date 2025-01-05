@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Boids Simulation</title>
+  <title>Mesmerizing Boids</title>
   <style>
     html, body {
       margin: 0;
@@ -17,6 +17,167 @@
 </head>
 <body>
   <canvas id="boids"></canvas>
-  <script src="boids.js"></script>
+  <script>
+    let width, height;
+    const numBoids = 150;
+    const visualRange = 75;
+
+    const boids = [];
+
+    function sizeCanvas() {
+      const canvas = document.getElementById("boids");
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    function initBoids() {
+      for (let i = 0; i < numBoids; i++) {
+        boids.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          dx: Math.random() * 2 - 1,
+          dy: Math.random() * 2 - 1,
+          colorHue: Math.random() * 360, // HSL hue
+        });
+      }
+    }
+
+    function distance(boid1, boid2) {
+      return Math.sqrt((boid1.x - boid2.x) ** 2 + (boid1.y - boid2.y) ** 2);
+    }
+
+    function keepWithinBounds(boid) {
+      const margin = 100;
+      const turnFactor = 1;
+
+      if (boid.x < margin) boid.dx += turnFactor;
+      if (boid.x > width - margin) boid.dx -= turnFactor;
+      if (boid.y < margin) boid.dy += turnFactor;
+      if (boid.y > height - margin) boid.dy -= turnFactor;
+    }
+
+    function flyTowardsCenter(boid) {
+      const centeringFactor = 0.005;
+      let centerX = 0, centerY = 0, numNeighbors = 0;
+
+      for (let otherBoid of boids) {
+        if (distance(boid, otherBoid) < visualRange) {
+          centerX += otherBoid.x;
+          centerY += otherBoid.y;
+          numNeighbors++;
+        }
+      }
+
+      if (numNeighbors > 0) {
+        centerX /= numNeighbors;
+        centerY /= numNeighbors;
+
+        boid.dx += (centerX - boid.x) * centeringFactor;
+        boid.dy += (centerY - boid.y) * centeringFactor;
+      }
+    }
+
+    function avoidOthers(boid) {
+      const avoidFactor = 0.05;
+      const minDistance = 20;
+      let moveX = 0, moveY = 0;
+
+      for (let otherBoid of boids) {
+        if (otherBoid !== boid && distance(boid, otherBoid) < minDistance) {
+          moveX += boid.x - otherBoid.x;
+          moveY += boid.y - otherBoid.y;
+        }
+      }
+
+      boid.dx += moveX * avoidFactor;
+      boid.dy += moveY * avoidFactor;
+    }
+
+    function matchVelocity(boid) {
+      const matchingFactor = 0.05;
+      let avgDX = 0, avgDY = 0, numNeighbors = 0;
+
+      for (let otherBoid of boids) {
+        if (distance(boid, otherBoid) < visualRange) {
+          avgDX += otherBoid.dx;
+          avgDY += otherBoid.dy;
+          numNeighbors++;
+        }
+      }
+
+      if (numNeighbors > 0) {
+        avgDX /= numNeighbors;
+        avgDY /= numNeighbors;
+
+        boid.dx += (avgDX - boid.dx) * matchingFactor;
+        boid.dy += (avgDY - boid.dy) * matchingFactor;
+      }
+    }
+
+    function limitSpeed(boid) {
+      const speedLimit = 4;
+      const speed = Math.sqrt(boid.dx ** 2 + boid.dy ** 2);
+      if (speed > speedLimit) {
+        boid.dx = (boid.dx / speed) * speedLimit;
+        boid.dy = (boid.dy / speed) * speedLimit;
+      }
+    }
+
+    function applyWaveEffect(boid, time) {
+      const waveIntensity = 0.5;
+      boid.dx += Math.sin(boid.x / 50 + time / 500) * waveIntensity;
+      boid.dy += Math.cos(boid.y / 50 + time / 500) * waveIntensity;
+    }
+
+    function drawBoid(ctx, boid) {
+      ctx.save();
+      ctx.translate(boid.x, boid.y);
+      ctx.fillStyle = `hsl(${boid.colorHue}, 70%, 60%)`; // Dynamic shimmering colors
+      ctx.beginPath();
+      ctx.moveTo(0, -5);
+      ctx.lineTo(-15, 5);
+      ctx.lineTo(-15, -5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function updateBoidColor(boid) {
+      boid.colorHue = (boid.colorHue + 1) % 360; // Gradual hue change
+    }
+
+    function animationLoop(time) {
+      const canvas = document.getElementById("boids");
+      const ctx = canvas.getContext("2d");
+
+      ctx.clearRect(0, 0, width, height);
+
+      for (let boid of boids) {
+        flyTowardsCenter(boid);
+        avoidOthers(boid);
+        matchVelocity(boid);
+        limitSpeed(boid);
+        keepWithinBounds(boid);
+        applyWaveEffect(boid, time);
+        updateBoidColor(boid);
+
+        boid.x += boid.dx;
+        boid.y += boid.dy;
+
+        drawBoid(ctx, boid);
+      }
+
+      requestAnimationFrame(animationLoop);
+    }
+
+    window.onload = () => {
+      sizeCanvas();
+      window.addEventListener("resize", sizeCanvas);
+      initBoids();
+      requestAnimationFrame(animationLoop);
+    };
+  </script>
 </body>
 </html>
